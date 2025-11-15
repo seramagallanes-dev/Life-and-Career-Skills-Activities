@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Career Ladder Challenge</title>
+<style>
+    body { font-family: Arial, sans-serif; background: linear-gradient(#d6eaff, #f3f9ff); text-align: center; padding: 20px; }
+    h1 { color: #1f3a60; }
+    .card { background: white; padding: 20px; margin: 15px auto; width: 90%; max-width: 400px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+    input { padding: 10px; width: 80%; border-radius: 8px; border: 1px solid #bcd; margin-bottom: 10px; }
+    .ladder { margin: 20px auto; width: 220px; border: 2px solid #3498db; border-radius: 10px; background: #ecf0f1; padding: 10px; display: none; }
+    .level { padding: 8px; margin: 5px 0; border-radius: 5px; }
+    .current { background-color: #3498db; color: white; font-weight: bold; }
+    .up { background-color: #2ecc71 !important; color: white; }
+    .down { background-color: #e74c3c !important; color: white; }
+    .choices button { padding: 10px 15px; margin: 5px; border: none; border-radius: 6px; cursor: pointer; background-color: #3498db; color: white; font-weight: bold; }
+    .choices button:hover { background-color: #2980b9; }
+    #play-btn { padding: 12px 20px; font-size: 18px; border: none; border-radius: 10px; cursor: pointer; background-color: #27ae60; color: white; font-weight: bold; }
+    #play-btn:hover { background-color: #2ecc71; }
+    #submit-score { padding: 12px 20px; font-size: 18px; border: none; border-radius: 10px; cursor: pointer; background-color: #2980b9; color: white; font-weight: bold; display:none; }
+    #submit-score:hover { background-color: #1f6090; }
+</style>
+</head>
+<body>
+
+<h1>Career Ladder Challenge</h1>
+<div class="card" id="name-card">
+    <h3>Enter Your Name</h3>
+    <input type="text" id="player-name" placeholder="Your name...">
+    <br>
+    <button id="play-btn">Start Game</button>
+</div>
+
+<div class="ladder" id="ladder"></div>
+<div id="question-section" class="card" style="display:none;"><p id="question"></p><div class="choices" id="choices"></div></div>
+<p id="timer" class="info" style="display:none;">Time left: 15s</p>
+<p id="score" class="info" style="display:none;">Score: 0</p>
+<p id="message" class="message"></p>
+<button id="submit-score">Submit Score</button>
+
+<!-- Hidden form to submit score reliably -->
+<form id="score-form" action="https://docs.google.com/forms/d/e/1FAIpQLSfGdGDkHvBIBBfmUDSF8wiVnwhxADfx-3gt-KH7AoGsdHhddw/formResponse" method="POST" target="hidden_iframe" style="display:none;">
+    <input name="entry.314308334" id="form-player-name">
+    <input name="entry.1544787393" id="form-score">
+    <iframe name="hidden_iframe" style="display:none;"></iframe>
+</form>
+
+<script>
+let level = 1, score = 0, time = 15, timerInterval, currentQuestion, playerName = "";
+
+function saveScore() {
+    document.getElementById('form-player-name').value = playerName;
+    document.getElementById('form-score').value = score;
+    document.getElementById('score-form').submit();
+    document.getElementById('submit-score').style.display = 'none';
+    alert('Score submitted successfully!');
+}
+
+const questions = {
+    1: [
+        {q: "A student chooses ICT because of high job demand. Factor?", a: "Environmental Influence", options: ["Personal Interest", "Environmental Influence", "Peer Influence", "Economic Factors"]},
+        {q: "A student wants to become a nurse due to community service. Factor?", a: "Personal Interest", options: ["Personal Interest", "Economic Factors", "Peer Influence", "Family Influence"]}
+    ],
+    2: [
+        {q: "A student chooses teaching because they love helping others. Factor?", a: "Personal Interest", options: ["Personal Interest", "Lifestyle Preference", "Family Influence", "Work Environment"]},
+        {q: "Choosing a career because friends are doing it. Factor?", a: "Peer Influence", options: ["Peer Influence", "Economic Factors", "Personal Interest", "Family Influence"]}
+    ],
+    3: [
+        {q: "Choosing a career because your parents suggest it. Factor?", a: "Family Influence", options: ["Economic Factors", "Peer Influence", "Family Influence", "Social Status"]},
+        {q: "A student wants to follow family tradition in law. Factor?", a: "Family Influence", options: ["Peer Influence", "Family Influence", "Personal Goals", "Economic Factors"]}
+    ],
+    4: [
+        {q: "Considering salary and benefits before choosing a career. Factor?", a: "Economic Factors", options: ["Lifestyle Preference", "Economic Factors", "Aptitude", "Work Environment"]},
+        {q: "Choosing a career with high growth opportunities. Factor?", a: "Economic Factors", options: ["Economic Factors", "Family Influence", "Personal Interest", "Peer Influence"]}
+    ],
+    5: [
+        {q: "Choosing a career that matches your skills in programming. Factor?", a: "Aptitude", options: ["Personal Interest", "Aptitude", "Peer Influence", "Family Influence"]},
+        {q: "A student is good at arts and wants a creative job. Factor?", a: "Aptitude", options: ["Aptitude", "Economic Factors", "Personal Goals", "Peer Influence"]}
+    ],
+    6: [
+        {q: "A student avoids a career because of long working hours. Factor?", a: "Lifestyle Preference", options: ["Social Status", "Lifestyle Preference", "Economic Factors", "Peer Influence"]},
+        {q: "Choosing flexible hours over high salary. Factor?", a: "Lifestyle Preference", options: ["Lifestyle Preference", "Economic Factors", "Peer Influence", "Family Influence"]}
+    ],
+    7: [
+        {q: "Joining a career because friends are doing it. Factor?", a: "Peer Influence", options: ["Peer Influence", "Personal Goals", "Environmental Influence", "Work Environment"]},
+        {q: "Selecting a field because colleagues recommend it. Factor?", a: "Peer Influence", options: ["Peer Influence", "Lifestyle Preference", "Family Influence", "Economic Factors"]}
+    ],
+    8: [
+        {q: "Selecting a career that allows work-life balance. Factor?", a: "Work Environment", options: ["Work Environment", "Personal Interest", "Family Influence", "Economic Factors"]},
+        {q: "Choosing a remote-friendly career. Factor?", a: "Work Environment", options: ["Work Environment", "Peer Influence", "Personal Interest", "Lifestyle Preference"]}
+    ],
+    9: [
+        {q: "Choosing a career to achieve personal goals. Factor?", a: "Personal Goals", options: ["Personal Goals", "Lifestyle Preference", "Peer Influence", "Social Status"]},
+        {q: "A student wants to start their own business. Factor?", a: "Personal Goals", options: ["Personal Goals", "Economic Factors", "Family Influence", "Peer Influence"]}
+    ],
+    10: [
+        {q: "Picking a profession because of prestige or recognition. Factor?", a: "Social Status", options: ["Social Status", "Aptitude", "Family Influence", "Environmental Influence"]},
+        {q: "Choosing a career to be recognized as a leader. Factor?", a: "Social Status", options: ["Social Status", "Personal Goals", "Economic Factors", "Work Environment"]}
+    ]
+};
+
+function displayLadder(flashClass){
+    let ladderDiv=document.getElementById("ladder");
+    ladderDiv.innerHTML="";
+    for(let i=10;i>=1;i--) ladderDiv.innerHTML+=`<div class='level ${i===level?('current '+(flashClass||'')) : ''}'>Level ${i}</div>`;
+}
+
+function getQuestion(level){
+    const levelQuestions = questions[level];
+    if(!levelQuestions || levelQuestions.length === 0) return {q:"No question.",a:"",options:[""]};
+    let question;
+    do {
+        question = levelQuestions[Math.floor(Math.random()*levelQuestions.length)];
+    } while(question === currentQuestion && levelQuestions.length > 1);
+    return question;
+}
+
+function showQuestion(){
+    clearInterval(timerInterval);
+    time=15;
+    document.getElementById("timer").innerText=`Time left: ${time}s`;
+    timerInterval=setInterval(()=>{
+        time--;
+        document.getElementById("timer").innerText=`Time left: ${time}s`;
+        if(time<=0){ clearInterval(timerInterval); wrongAnswer("Time's up!"); }
+    },1000);
+
+    currentQuestion=getQuestion(level);
+    document.getElementById("question").innerText=currentQuestion.q;
+
+    const choicesDiv=document.getElementById("choices");
+    choicesDiv.innerHTML="";
+    currentQuestion.options.forEach(opt=>{
+        const btn=document.createElement("button");
+        btn.innerText=opt;
+        btn.onclick=()=>checkAnswer(opt);
+        choicesDiv.appendChild(btn);
+    });
+
+    document.getElementById("message").innerText="";
+}
+
+function checkAnswer(sel){
+    clearInterval(timerInterval);
+    if(sel===currentQuestion.a){
+        score += 10 + time;
+        level++;
+        flashLevel("up");
+        document.getElementById("message").innerText="Correct! You climb one level.";
+    } else {
+        if(level>1) level--;
+        flashLevel("down");
+        document.getElementById("message").innerText="Wrong! You move down a level.";
+    }
+    document.getElementById("score").innerText=`Score: ${score}`;
+    nextStep();
+}
+
+function flashLevel(dir){
+    displayLadder(dir);
+    setTimeout(()=>displayLadder(),500);
+}
+
+function nextStep(){
+    if(level>10){
+        clearInterval(timerInterval);
+        document.getElementById("submit-score").style.display='inline-block';
+        document.getElementById("question-section").innerHTML=`<h2>Congratulations, ${playerName}!</h2><p>Final Score: ${score}</p>`;
+        return;
+    }
+    showQuestion();
+}
+
+function wrongAnswer(msg){
+    if(level>1) level--;
+    flashLevel("down");
+    document.getElementById("message").innerText=msg;
+    nextStep();
+}
+
+document.getElementById("play-btn").onclick=()=>{
+    const nameField=document.getElementById("player-name");
+    if(nameField.value.trim()===""){
+        alert("Please enter your name first.");
+        return;
+    }
+    playerName=nameField.value.trim();
+    document.getElementById("name-card").style.display="none";
+    document.getElementById("ladder").style.display="block";
+    document.getElementById("question-section").style.display="block";
+    document.getElementById("timer").style.display="block";
+    document.getElementById("score").style.display="block";
+    displayLadder();
+    showQuestion();
+};
+
+document.getElementById("submit-score").onclick=saveScore;
+</script>
+</body>
+</html>
